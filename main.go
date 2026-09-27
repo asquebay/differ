@@ -258,7 +258,7 @@ func main() {
 					// 2 пробела для выравнивания удалённых строк
 					fmt.Printf("%s  %s%s\n", Red, hl.Text, Reset)
 				case diffmatchpatch.DiffInsert:
-					// 2 пробела для выравнивания новых строк
+					// 2 пробела для выравнивания добавленных строк
 					fmt.Printf("%s  %s%s\n", Green, hl.Text, Reset)
 				case diffmatchpatch.DiffEqual:
 					fmt.Printf("%s  %s%s\n", Dim, hl.Text, Reset)
