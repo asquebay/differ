@@ -107,8 +107,8 @@ func readText(stepPrompt string) string {
 type diffLine struct {
 	Type diffmatchpatch.Operation
 	Text string
-	Num1 int // Номер строки в файле 1 (0 если добавлена)
-	Num2 int // Номер строки в файле 2 (0 если удалена)
+	Num1 int // номер строки в файле 1 (0 если добавлена)
+	Num2 int // номер строки в файле 2 (0 если удалена)
 }
 
 func main() {
@@ -139,7 +139,7 @@ func main() {
 		return
 	}
 
-	// Превращаем сырые куски в плоский список строк с расчетом реальных номеров строк
+	// Превращаем сырые куски в плоский список строк с расчётом реальных номеров строк
 	var allLines []diffLine
 	line1, line2 := 1, 1
 
@@ -147,9 +147,10 @@ func main() {
 		if diff.Text == "" {
 			continue
 		}
-		// Дробим кусок на строки, сохраняя финальный перенос
-		lines := strings.Split(strings.TrimSuffix(diff.Text, "\n"), "\n")
-		for _, line := range lines {
+		// Дробим кусок на строки, сохраняя финальный перенос.
+		// Используем strings.SplitSeq вместо strings.Split.
+		// Так как это итератор, мы передаём его напрямую в for range
+		for line := range strings.SplitSeq(strings.TrimSuffix(diff.Text, "\n"), "\n") {
 			dl := diffLine{Type: diff.Type, Text: line}
 			switch diff.Type {
 			case diffmatchpatch.DiffEqual:
@@ -173,23 +174,23 @@ func main() {
 	n := len(allLines)
 	show := make([]bool, n)
 
-	// Шаг 4.1: Маркируем измененные строки и контекст вокруг них
+	// 4.1. Маркировка изменённых строк и контекста вокруг них
 	for i := range n {
 		if allLines[i].Type != diffmatchpatch.DiffEqual {
-			// Сама измененная строка должна быть показана
+			// Сама изменённая строка должна быть показана
 			show[i] = true
-			// Маркируем контекст до нее
+			// Маркируем контекст до неё
 			for j := i - 1; j >= 0 && j >= i-contextSize; j-- {
 				show[j] = true
 			}
-			// Маркируем контекст после нее
+			// Маркируем контекст после неё
 			for j := i + 1; j < n && j <= i+contextSize; j++ {
 				show[j] = true
 			}
 		}
 	}
 
-	// Шаг 4.2: Выводим сгрупбированные блоки (Hunks) с метаинформацией @@
+	// 4.2. Вывод сгруппированных хунков с метаинформацией @@
 	inHunk := false
 	var hunkLines []diffLine
 
@@ -202,19 +203,20 @@ func main() {
 			hunkLines = append(hunkLines, allLines[i])
 		}
 
-		// Если hunk закончился или мы дошли до конца всего списка строк
+		// Если хунк закончился или мы дошли до конца всего списка строк
 		if (!show[i] || i == n-1) && inHunk {
 			inHunk = false
 			if len(hunkLines) == 0 {
 				continue
 			}
 
-			// Считаем метаданные для заголовка @@
+			// Считываем метаданные для заголовка @@
 			start1, len1 := 0, 0
 			start2, len2 := 0, 0
 
 			for _, hl := range hunkLines {
-				if hl.Type == diffmatchpatch.DiffEqual {
+				switch hl.Type {
+				case diffmatchpatch.DiffEqual:
 					if start1 == 0 {
 						start1 = hl.Num1
 					}
@@ -223,12 +225,14 @@ func main() {
 					}
 					len1++
 					len2++
-				} else if hl.Type == diffmatchpatch.DiffDelete {
+
+				case diffmatchpatch.DiffDelete:
 					if start1 == 0 {
 						start1 = hl.Num1
 					}
 					len1++
-				} else if hl.Type == diffmatchpatch.DiffInsert {
+
+				case diffmatchpatch.DiffInsert:
 					if start2 == 0 {
 						start2 = hl.Num2
 					}
@@ -251,10 +255,10 @@ func main() {
 			for _, hl := range hunkLines {
 				switch hl.Type {
 				case diffmatchpatch.DiffDelete:
-					// 2 пробела для выравнивания
+					// 2 пробела для выравнивания удалённых строк
 					fmt.Printf("%s  %s%s\n", Red, hl.Text, Reset)
 				case diffmatchpatch.DiffInsert:
-					// 2 пробела для выравнивания
+					// 2 пробела для выравнивания новых строк
 					fmt.Printf("%s  %s%s\n", Green, hl.Text, Reset)
 				case diffmatchpatch.DiffEqual:
 					fmt.Printf("%s  %s%s\n", Dim, hl.Text, Reset)
